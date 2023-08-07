@@ -1,15 +1,16 @@
+#![allow(dead_code)]
+
 use std::{
     error::Error,
     fmt::{Debug, Display},
     str::Utf8Error,
-    result,
-    str
+    str,
 };
 
-use super::method::{Method, MethodError};
+use super::{method::{Method, MethodError}, QueryString};
 pub struct Request<'buf> {
     path: &'buf str,
-    query: Option<&'buf str>,
+    query: Option<QueryString<'buf>>,
     method: Method,
 }
 
@@ -28,7 +29,7 @@ impl <'buf> TryFrom<&'buf [u8]> for Request<'buf> {
         let method: Method = method.parse()?;
         let mut query_string = None;
         if let Some(i) = path.find("?") {
-            query_string = Some(&path[i + 1..]);
+            query_string = Some(QueryString::from(&path[i + 1..]));
             path = &path[..i];
         }
         return Ok(Self { 
