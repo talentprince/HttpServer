@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use std::{
     error::Error,
     fmt::{Debug, Display},
@@ -8,6 +6,8 @@ use std::{
 };
 
 use super::{method::{Method, MethodError}, QueryString};
+
+#[derive(Debug)]
 pub struct Request<'buf> {
     path: &'buf str,
     query: Option<QueryString<'buf>>,
@@ -20,12 +20,11 @@ impl <'buf> TryFrom<&'buf [u8]> for Request<'buf> {
     fn try_from(value: &'buf [u8]) -> Result<Self, Self::Error> {
         let result = str::from_utf8(value)?;
         let (method, result) = read_next_word(result).ok_or(ParseError::InvalidReqest)?;
+        let (mut path  , result) = read_next_word(result).ok_or(ParseError::InvalidReqest)?;
         let (protocal, result) = read_next_word(result).ok_or(ParseError::InvalidReqest)?;
-        if protocal != "Http/1.1" {
+        if protocal != "HTTP/1.1" {
             return Err(ParseError::InvalidProtocal);
         }
-        
-        let (mut path  , result) = read_next_word(result).ok_or(ParseError::InvalidReqest)?;
         let method: Method = method.parse()?;
         let mut query_string = None;
         if let Some(i) = path.find("?") {
@@ -42,7 +41,7 @@ impl <'buf> TryFrom<&'buf [u8]> for Request<'buf> {
 
 fn read_next_word(request: &str) -> Option<(&str, &str)> {
     for (i, c) in request.chars().enumerate() {
-        if c == ' ' || c == '\n' {
+        if c == ' ' || c == '\n' || c == '\r' {
             return Some((&request[..i], &request[i + 1..]));
         }
     }

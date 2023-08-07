@@ -19,9 +19,13 @@ impl Server {
                     let mut buf = [0; 1024];
                     match stream.read(&mut buf) {
                         Ok(_) => {
-                            dbg!(&buf[..20]);
-                            let result: Result<Request, _> = TryFrom::try_from(&buf[..]);
-                            println!("Recieved something: {}", String::from_utf8_lossy(&buf))
+                            println!("Recieved something: {}", String::from_utf8_lossy(&buf));
+                            match Request::try_from(&buf[..]) {
+                                Ok(request) => {
+                                    dbg!(request);
+                                },
+                                Err(e) => println!("Failed to parse request [{}]", e),
+                            };
                         },
                         Err(e) => println!("Failed to read from socket. [{}]", e),
                     };
