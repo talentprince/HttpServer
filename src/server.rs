@@ -1,5 +1,16 @@
+use super::http::{ParseError, Request, Response, StatusCode};
 use std::{io::Read, net::TcpListener};
-use crate::http::{Request, Response, StatusCode, response};
+
+pub trait Handler {
+    fn handle_response(&mut self, request: &Request) -> Response;
+    fn handle_error(&mut self, e: &ParseError) -> Response {
+        println!("Failed to parse request: {}", e);
+        Response::new(
+            StatusCode::BadRequest,
+            Some("<h1>Bad Request</h1>".to_string()),
+        )
+    }
+}
 
 pub struct Server {
     addr: String,
@@ -10,7 +21,7 @@ impl Server {
         Self { addr }
     }
 
-    pub fn run(&self) {
+    pub fn run(&self, mut handler: impl Handler) {
         let listener = TcpListener::bind(&self.addr).unwrap();
         println!("Listening to {}", self.addr);
         loop {
@@ -22,18 +33,16 @@ impl Server {
                             println!("Recieved something: {}", String::from_utf8_lossy(&buf));
                             let response = match Request::try_from(&buf[..]) {
                                 Ok(request) => {
-                                    dbg!(request);
-                                    Response::new(StatusCode::NotFound, Some("<h1>Ha, page not found</h1>".to_string()))
-                                },
+                                    handler.handle_response(&request)
+                                }
                                 Err(e) => {
-                                    println!("Failed to parse request: {}", e);
-                                    Response::new(StatusCode::BadRequest, Some("<h1>Bad Request</h1>".to_string()))
-                                },
+                                    handler.handle_error(&e)
+                                }
                             };
                             if let Err(e) = response.send(&mut stream) {
                                 println!("Failed to send response: {}", e);
                             }
-                        },
+                        }
                         Err(e) => println!("Failed to read from socket. [{}]", e),
                     };
                 }
